@@ -1,28 +1,32 @@
-autocmd BufWritePost *.tex call CreatePdf(expand('%:p'))
-autocmd BufWritePost *.cls call CheckClassUse(expand('%:t:r'))
+autocmd BufWritePost *.tex call CreatePdfFromTex(expand('%:p'))
+autocmd BufWritePost *.cls call CheckForUseOfClassInAllTex(expand('%:t:r'))
 
-fu CreatePdf(path)
-    silent execute '!pdflatex -output-directory=' . fnamemodify(a:path, ':p:h') . ' ' . a:path
-    silent execute '!open ' . fnamemodify(a:path, ':p:r') . '.pdf'
+
+fu CreatePdfFromTex(absoluteTexPath)
+    let directory        = fnamemodify(a:absoluteTexPath, ':p:h')
+    let withoutExtension = fnamemodify(a:absoluteTexPath, ':p:r')
+
+    silent execute '!pdflatex -output-directory=' . directory . ' ' . a:absoluteTexPath
+    silent execute '!open ' . withoutExtension . '.pdf'
 endfu
 
-fu CheckClassUse(className)
-    let texPaths = split(globpath('%:p:h', '**/*.tex'), '\n')
+fu CheckForUseOfClassInAllTex(className)
+    let allTexPaths = split(globpath('%:p:h', '**/*.tex'), '\n')
 
-    for path in texPaths
-        let find = "documentclass.*{" . a:className . "}"
-        let path = EscapePath(path)
+    for texPath in allTexPaths
+        let searchFor    = "documentclass.*{" . a:className . "}"
+        let searchedFile = EscapeSpaces(texPath)
 
-        redir => result
-            silent execute '!grep -q "' . find . '" ' . path
+        redir => searchResult
+            silent execute '!grep -q "' . searchFor . '" ' . searchedFile
         redir end
 
-        if match(result, 'shell returned 1') < 0
-            call CreatePdf(path)
+        if match(searchResult, 'shell returned 1') < 0
+            call CreatePdfFromTex(searchedFile)
         endif
     endfor
 endfu
 
-fu EscapePath(string)
+fu EscapeSpaces(string)
     return substitute(a:string, ' ', '\\ ', 'g')
 endfu
